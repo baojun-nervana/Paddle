@@ -65,13 +65,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (FLAGS_use_ngraph) {
       VLOG(1) << "Add ngraph_subgraph_pass";
       AppendPass("ngraph_subgraph_pass");
-    } else if (!strategy_.ngraph_enabled_op_types_.empty()) {
-      LOG(WARNING)
-          << "ngraph_enabled_op_types specify the operator type list to "
-             "use NGRAPH acceleration. It is null in default, means "
-             "that all the operators supported by NGRAPH will be "
-             "accelerated. And it should not be set when "
-             "FLAGS_use_ngraph=false.";
     }
 #else
     PADDLE_ENFORCE(!FLAGS_use_ngraph,
