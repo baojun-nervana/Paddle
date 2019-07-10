@@ -61,7 +61,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     VLOG(1) << "Add record_skip_memory_opt_vars_pass";
     AppendPass("record_skip_memory_opt_vars_pass");
 
-#ifdef PADDLE_WITH_NGRAPH
+ #ifdef PADDLE_WITH_NGRAPH
     if (FLAGS_use_ngraph) {
       VLOG(1) << "Add ngraph_subgraph_pass";
       AppendPass("ngraph_subgraph_pass");

@@ -48,4 +48,4 @@ void BuildFillConstantNode(
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_NG_OP(fill_constant, BuildFillConstantNode);
+// REGISTER_NG_OP(fill_constant, BuildFillConstantNode);
