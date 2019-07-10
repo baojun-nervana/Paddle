@@ -75,7 +75,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
 #else
     PADDLE_ENFORCE(!FLAGS_use_ngraph,
-                   "Please compile with MKLDNN first to use NGRAPH");
+                   "Please compile with NGRAPH first to use NGRAPH");
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -410,4 +410,6 @@ USE_PASS(record_skip_memory_opt_vars_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
+#ifdef PADDLE_WITH_NGRAPH
 USE_PASS(ngraph_subgraph_pass);
+#endif
