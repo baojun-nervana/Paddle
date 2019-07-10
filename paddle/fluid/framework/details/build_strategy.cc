@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_print_pass.h"
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_ngraph);
 
 namespace paddle {
 namespace framework {
@@ -59,6 +60,23 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // Note(zcd): record_skip_memory_opt_vars_pass should be the first pass.
     VLOG(1) << "Add record_skip_memory_opt_vars_pass";
     AppendPass("record_skip_memory_opt_vars_pass");
+
+#ifdef PADDLE_WITH_NGRAPH
+    if (FLAGS_use_ngraph) {
+      VLOG(1) << "Add ngraph_subgraph_pass";
+      AppendPass("ngraph_subgraph_pass");
+    } else if (!strategy_.ngraph_enabled_op_types_.empty()) {
+      LOG(WARNING)
+          << "ngraph_enabled_op_types specify the operator type list to "
+             "use NGRAPH acceleration. It is null in default, means "
+             "that all the operators supported by NGRAPH will be "
+             "accelerated. And it should not be set when "
+             "FLAGS_use_ngraph=false.";
+    }
+#else
+    PADDLE_ENFORCE(!FLAGS_use_ngraph,
+                   "Please compile with MKLDNN first to use NGRAPH");
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
     if (FLAGS_use_mkldnn) {
@@ -392,3 +410,4 @@ USE_PASS(record_skip_memory_opt_vars_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
+USE_PASS(ngraph_subgraph_pass);

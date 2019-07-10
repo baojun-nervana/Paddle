@@ -237,7 +237,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("workspace_size") = 1 << 20, py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("use_static") = false, py::arg("use_calib_mode") = true)
+           py::arg("use_static") = true, py::arg("use_calib_mode") = false)
       .def("enable_anakin_engine", &AnalysisConfig::EnableAnakinEngine,
            py::arg("max_batch_size") = 1,
            py::arg("max_input_shape") =
@@ -251,6 +251,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
+      .def("enable_ngraph", &AnalysisConfig::EnableNgraph)
       .def("mkldnn_enabled", &AnalysisConfig::mkldnn_enabled)
       .def("set_cpu_math_library_num_threads",
            &AnalysisConfig::SetCpuMathLibraryNumThreads)

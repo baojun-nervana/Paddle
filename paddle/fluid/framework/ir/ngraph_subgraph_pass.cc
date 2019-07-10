@@ -56,6 +56,7 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
   auto teller = [](const Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     auto op_type = node->Op()->Type();
+    std::cout << op_type << std::endl;
     return !paddle::operators::NgraphBridge::isRegister(op_type);
   };
 
@@ -66,9 +67,6 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
     if (node->IsOp() && !ANAT::Agent(node).subgraph()->empty()) {
       OpDesc *op_desc = node->Op();
       op_desc->SetType("ngraph_engine");
-      for (auto it = ANAT::Agent(node).subgraph()->begin();
-           it != ANAT::Agent(node).subgraph()->end(); ++it) {
-      }
 
       CreateNgraphEngineOp(node, graph);
 
@@ -113,20 +111,16 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
   }
 
   std::set<std::string> input_names;
-  std::set<std::string> input_names_with_id;
   for (auto *x : node->inputs) {
     input_names.insert(x->Name());
-    input_names_with_id.insert(x->Name() + std::to_string(x->id()));
   }
   op_desc->SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
   std::set<std::string> output_names;
-  std::set<std::string> output_names_with_id;
 
   for (auto *x : node->outputs) {
     output_names.insert(x->Name());
-    output_names_with_id.insert(x->Name() + std::to_string(x->id()));
   }
   op_desc->SetOutput(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
@@ -143,11 +137,12 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
   op_desc->SetType("ngraph_engine");
 
   int sgs = subgraph.size();
-  std::string engine_key = GenerateEngineKey(
-      input_names_with_id, output_names_with_id, std::to_string(sgs));
+  std::string subgraph_str = block_desc.Proto()->SerializeAsString();
+  std::string engine_key =
+      std::to_string(std::hash<std::string>()(subgraph_str));
   std::vector<int> interval{0, sgs};
   op_desc->SetAttr("interval", interval);
-  op_desc->SetAttr("graph", block_desc.Proto()->SerializeAsString());
+  op_desc->SetAttr("graph", subgraph_str);
   op_desc->SetAttr("engine_key", engine_key);
 }
 
