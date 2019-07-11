@@ -31,6 +31,8 @@ namespace paddle {
 namespace operators {
 
 bool NgraphBridge::isRegister(const std::string& str) {
+  if (str == "elementwise_add") return false;
+  else return true;
   return ops::NgraphSingleton::Lookup(str);
 }
 

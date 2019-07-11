@@ -93,8 +93,7 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
   auto &subgraph = *ANAT::Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
-  framework::ProgramDesc *program_desc =
-      Get<framework::ProgramDesc *>("program");
+  framework::ProgramDesc *program_desc = new framework::ProgramDesc();
   const framework::BlockDesc &main_block =
       program_desc->Block(framework::kRootBlockIndex);
   framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
@@ -144,6 +143,7 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
   op_desc->SetAttr("interval", interval);
   op_desc->SetAttr("graph", subgraph_str);
   op_desc->SetAttr("engine_key", engine_key);
+  op_desc->SetAttr("op_role", 0);
 }
 
 }  // namespace ir
