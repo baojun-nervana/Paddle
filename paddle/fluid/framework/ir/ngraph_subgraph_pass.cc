@@ -57,6 +57,11 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
     if (!node->IsOp() || !node->Op()) return false;
     auto op_type = node->Op()->Type();
     std::cout << op_type << std::endl;
+    if (op_type == "mean_grad" &&
+        op_type == "mean" &&
+        op_type == "fill_constant" &&
+        op_type == "softmax") return true;
+    else return false;
     return !paddle::operators::NgraphBridge::isRegister(op_type);
   };
 
@@ -84,7 +89,7 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
     }
   }
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
-  std::vector<ir::Node *> nodes = ir::TopologySortOperations(*graph);
+  // std::vector<ir::Node *> nodes = ir::TopologySortOperations(*graph);
 }
 
 void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
