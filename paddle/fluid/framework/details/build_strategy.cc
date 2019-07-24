@@ -61,7 +61,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     VLOG(1) << "Add record_skip_memory_opt_vars_pass";
     AppendPass("record_skip_memory_opt_vars_pass");
 
- #ifdef PADDLE_WITH_NGRAPH
+#ifdef PADDLE_WITH_NGRAPH
     if (FLAGS_use_ngraph) {
       VLOG(1) << "Add ngraph_subgraph_pass";
       AppendPass("ngraph_subgraph_pass");
@@ -70,39 +70,41 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     PADDLE_ENFORCE(!FLAGS_use_ngraph,
                    "Please compile with NGRAPH first to use NGRAPH");
 #endif
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (FLAGS_use_mkldnn) {
-      VLOG(1) << "Add mkldnn_placement_pass";
-      AppendPass("mkldnn_placement_pass");
-    } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
-      LOG(WARNING)
-          << "mkldnn_enabled_op_types specify the operator type list to "
-             "use MKLDNN acceleration. It is null in default, means "
-             "that all the operators supported by MKLDNN will be "
-             "accelerated. And it should not be set when "
-             "FLAGS_use_mkldnn=false.";
-    }
-#else
-    PADDLE_ENFORCE(!FLAGS_use_mkldnn,
-                   "Please compile with MKLDNN first to use MKLDNN");
-#endif
+    /*
+    #ifdef PADDLE_WITH_MKLDNN
+        if (FLAGS_use_mkldnn) {
+          VLOG(1) << "Add mkldnn_placement_pass";
+          AppendPass("mkldnn_placement_pass");
+        } else if (!strategy_.mkldnn_enabled_op_types_.empty()) {
+          LOG(WARNING)
+              << "mkldnn_enabled_op_types specify the operator type list to "
+                 "use MKLDNN acceleration. It is null in default, means "
+                 "that all the operators supported by MKLDNN will be "
+                 "accelerated. And it should not be set when "
+                 "FLAGS_use_mkldnn=false.";
+        }
+    #else
+        PADDLE_ENFORCE(!FLAGS_use_mkldnn,
+                       "Please compile with MKLDNN first to use MKLDNN");
+    #endif
+    */
     if (strategy_.enable_sequential_execution_) {
       VLOG(1) << "Add sequential_execution_pass";
       AppendPass("sequential_execution_pass");
     }
+    /*
+        // Add op fusion.
+        if (strategy.sync_batch_norm_) {
+          AppendPass("sync_batch_norm_pass");
+        }
 
-    // Add op fusion.
-    if (strategy.sync_batch_norm_) {
-      AppendPass("sync_batch_norm_pass");
-    }
+        // Add op fusion.
+        if (strategy.fuse_relu_depthwise_conv_) {
+          VLOG(1) << "Add fuse_relu_depthwise_conv_pass";
+          AppendPass("fuse_relu_depthwise_conv_pass");
+        }
 
-    // Add op fusion.
-    if (strategy.fuse_relu_depthwise_conv_) {
-      VLOG(1) << "Add fuse_relu_depthwise_conv_pass";
-      AppendPass("fuse_relu_depthwise_conv_pass");
-    }
-
+    */
     // NOTE(dzhwinter): A note for automatical inplace.
     // 1. modify program desc passes should put
     // before inplace pass.
@@ -119,7 +121,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       VLOG(1) << "Add fuse_elewise_add_act_pass";
       AppendPass("fuse_elewise_add_act_pass");
     }
-
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // alloc_continuous_space_for_grad_pass should be before of MultiDevPass.
     if (strategy_.fuse_all_reduce_ops_) {
@@ -154,7 +155,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           "%s%s", strategy_.debug_graphviz_path_.c_str(), "_fused_graph");
       viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     }
-
     CollectiveContext *context = CollectiveContext::GetInstance();
     context->endpoints_ = strategy_.trainers_endpoints_;
     context->trainer_id_ = strategy_.trainer_id_;
@@ -364,6 +364,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
+    std::cout << "Start Apply Pass " << pass->Type() << std::endl;
     graph = pass->Apply(graph);
     VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
@@ -400,9 +401,11 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(record_skip_memory_opt_vars_pass);
+/*
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
+*/
 #ifdef PADDLE_WITH_NGRAPH
 USE_PASS(ngraph_subgraph_pass);
 #endif

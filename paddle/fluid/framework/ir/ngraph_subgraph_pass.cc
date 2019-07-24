@@ -56,11 +56,13 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
   auto teller = [](const Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     auto op_type = node->Op()->Type();
+
     std::cout << op_type << std::endl;
-    if (op_type == "softmax")
+    if (op_type == "mean")
       return true;
     else
       return false;
+
     return !paddle::operators::NgraphBridge::isRegister(op_type);
   };
 
@@ -77,6 +79,13 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
       std::unordered_set<const Node *> nodes2remove(
           ANAT::Agent(node).subgraph()->begin(),
           ANAT::Agent(node).subgraph()->end());
+
+      std::cout << "\n\nnode in nodes2remove\n";
+      std::cout << "nodes2remove size = " << nodes2remove.size() << std::endl;
+      for (auto *node : nodes2remove) {
+        std::cout << node->Op()->Type() << std::endl;
+      }
+
       GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
@@ -87,8 +96,23 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
       nodes2remove.insert(node);
     }
   }
+
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   // std::vector<ir::Node *> nodes = ir::TopologySortOperations(*graph);
+
+  std::cout << "\n\n nodes after ngraph pass\n";
+  for (auto *node : graph->Nodes()) {
+    if (node->IsOp()) {
+      std::cout << node->Op()->Type() << std::endl;
+    }
+  }
+
+  std::cout << "\n\n vars after ngraph pass\n";
+  for (auto *node : graph->Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+      std::cout << node->Var()->Name() << std::endl;
+    }
+  }
 }
 
 void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
