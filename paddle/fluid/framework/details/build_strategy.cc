@@ -364,8 +364,22 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     }
     VLOG(3) << "Start Apply Pass " << pass->Type();
-    std::cout << "Start Apply Pass " << pass->Type() << std::endl;
+    std::cout << "\n\nStart Apply Pass " << pass->Type() << std::endl;
     graph = pass->Apply(graph);
+
+    if (pass->Type() == "all_reduce_mode_multi_devices_pass") {
+      for (auto *node : graph->Nodes()) {
+        if (node->IsOp() && node->Op()) {
+          std::cout << node->Op()->Type() << std::endl;
+        }
+      }
+
+      for (auto *node : graph->Nodes()) {
+        if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+          std::cout << node->Var()->Name() << std::endl;
+        }
+      }
+    }
     VLOG(3) << "Finish Apply Pass " << pass->Type();
   }
   VLOG(3) << "All Passes Applied";

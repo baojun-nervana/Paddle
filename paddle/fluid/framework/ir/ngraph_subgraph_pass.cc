@@ -56,8 +56,17 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
   auto teller = [](const Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     auto op_type = node->Op()->Type();
+    std::cout << op_type << "\t" << node->id() << "\t";
+    for (auto output : node->outputs) {
+      std::cout << output->Name() << "\t";
+    }
+    std::cout << std::endl;
 
-    std::cout << op_type << std::endl;
+    for (auto output : node->inputs) {
+      std::cout << output->Name() << "\t";
+    }
+    std::cout << std::endl;
+
     if (op_type == "mean")
       return true;
     else
@@ -103,7 +112,16 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
   std::cout << "\n\n nodes after ngraph pass\n";
   for (auto *node : graph->Nodes()) {
     if (node->IsOp()) {
-      std::cout << node->Op()->Type() << std::endl;
+      std::cout << node->Op()->Type() << "\t" << node->id() << "\t";
+      for (auto output : node->outputs) {
+        std::cout << output->Name() << "\t";
+      }
+      std::cout << std::endl;
+
+      for (auto output : node->inputs) {
+        std::cout << output->Name() << "\t";
+      }
+      std::cout << std::endl;
     }
   }
 
@@ -120,6 +138,7 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
   auto *op_desc = node->Op();
   auto &subgraph = *ANAT::Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
+  // node->SetId(subgraph.back()->id());
 
   framework::ProgramDesc *program_desc = new framework::ProgramDesc();
   const framework::BlockDesc &main_block =
