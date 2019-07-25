@@ -29,6 +29,7 @@ using framework::ir::Node;
 
 std::pair<std::vector<Node *>, std::vector<Node *>>
 ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
+  std::cout << "subgraph_detector subgraph size : " << graph.size() << "\n";
   std::unordered_set<Node *> nodes(graph.begin(), graph.end());
   std::unordered_set<Node *> inputs;
   std::unordered_set<Node *> outputs;
@@ -54,6 +55,10 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
       }
     }
   }
+  std::cout << "subgraph_detector subgraph inputs size : " << inputs.size()
+            << "\n";
+  std::cout << "subgraph_detector subgraph outputs size : " << outputs.size()
+            << "\n";
   return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
                         std::vector<Node *>(outputs.begin(), outputs.end()));
 }
@@ -427,7 +432,14 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     block_node->inputs = std::move(io.first);
     block_node->outputs = std::move(io.second);
 
-    RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
+    std::cout << "subgraph_detector subgraph block inputs size : "
+              << block_node->inputs.size() << "\n";
+    std::cout << "subgraph_detector subgraph block outputs size : "
+              << block_node->outputs.size() << "\n";
+    std::cout << block_node->outputs.back()->Name() << "\n";
+
+    // RemoveIntermediateOutputInSubgraph(subgraph, graph_,
+    // &block_node->outputs);
 
     for (auto *node : subgraph) {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each
@@ -453,6 +465,10 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     for (auto *&o : block_node->outputs) {
       inlink_or_outlink_cleaner(o->inputs);
     }
+    std::cout << "subgraph_detector subgraph block inputs size : "
+              << block_node->inputs.size() << "\n";
+    std::cout << "subgraph_detector subgraph block outputs size : "
+              << block_node->outputs.size() << "\n";
   }
   // DetachDeletedNodes(graph_);
   FilterRedundantOutputOfSubGraph(graph_);
