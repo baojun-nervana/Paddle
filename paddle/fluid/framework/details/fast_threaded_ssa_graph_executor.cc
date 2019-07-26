@@ -41,6 +41,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
     if (dep == 0) {
+      std::cout << "bootstrap op : " << op->Name() << std::endl;
       bootstrap_ops_.emplace_back(op);
     }
   }
@@ -174,6 +175,7 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 bool FastThreadedSSAGraphExecutor::RunOp(
     OpHandleBase *op, const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
     size_t *complete) {
+  std::cout << "   RunOp op type : " << op->Name() << std::endl;
   RunOpSync(op);
   if (LIKELY(!exception_.IsCaught())) {
     if (LIKELY(!strategy_.dry_run_)) {

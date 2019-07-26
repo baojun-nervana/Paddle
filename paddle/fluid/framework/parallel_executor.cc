@@ -456,19 +456,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
-  for (auto &node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()) {
-      std::cout << "parallel executor : post bs apply : op names : ";
-      std::cout << node->Op()->Type() << std::endl;
-    }
-  }
-  for (auto &node : graph->Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      std::cout << "parallel executor : post bs apply : var names : ";
-      std::cout << node->Var()->Name() << std::endl;
-    }
-  }
-
   auto max_memory_size = GetEagerDeletionThreshold();
   VLOG(10) << "Eager Deletion Threshold "
            << static_cast<float>(max_memory_size) / (1 << 30);
@@ -484,15 +471,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   std::vector<details::VariableInfo> var_infos;
 
   for (auto &node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()) {
-      std::cout << "parallel executor : var_infos : op names : ";
-      std::cout << node->Op()->Type() << std::endl;
-    }
-  }
-  for (auto &node : graph->Nodes()) {
     if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      std::cout << "parallel executor : var_infos : var names : ";
-      std::cout << node->Var()->Name() << std::endl;
       var_infos.emplace_back();
       var_infos.back().name_ = node->Var()->Name();
       var_infos.back().type_ = node->Var()->GetType();

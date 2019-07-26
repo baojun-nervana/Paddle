@@ -67,7 +67,7 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
     }
     std::cout << std::endl;
 
-    if (op_type == "mean")
+    if (op_type == "relu")
       return true;
     else
       return false;
@@ -108,29 +108,6 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
 
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   // std::vector<ir::Node *> nodes = ir::TopologySortOperations(*graph);
-
-  std::cout << "\n\n nodes after ngraph pass\n";
-  for (auto *node : graph->Nodes()) {
-    if (node->IsOp()) {
-      std::cout << node->Op()->Type() << "\t" << node->id() << "\t";
-      for (auto output : node->outputs) {
-        std::cout << output->Name() << "\t";
-      }
-      std::cout << std::endl;
-
-      for (auto output : node->inputs) {
-        std::cout << output->Name() << "\t";
-      }
-      std::cout << std::endl;
-    }
-  }
-
-  std::cout << "\n\n vars after ngraph pass\n";
-  for (auto *node : graph->Nodes()) {
-    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
-      std::cout << node->Var()->Name() << std::endl;
-    }
-  }
 }
 
 void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
