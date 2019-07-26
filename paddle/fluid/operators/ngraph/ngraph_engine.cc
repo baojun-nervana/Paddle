@@ -332,6 +332,8 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
     op_state_ = OpState::UNKNOWN;
   }
 
+  var_in_.clear();
+  var_out_.clear();
   if (var_in_.empty() && var_out_.empty()) {
     BuildNgIO(ops_desc, interval);
   }
@@ -475,6 +477,8 @@ std::shared_ptr<ngraph::Function> NgraphEngine::BuildNgFunction(
   ngraph::ParameterVector func_inputs;
 
   for (auto& vo : var_out_) {
+    PADDLE_ENFORCE(var_node_map_->count(vo),
+                   "BuildNgFunction : Cannot find vo %s in var_node_map_", vo);
     func_outputs.emplace_back(var_node_map_->at(vo));
   }
 
@@ -567,6 +571,7 @@ void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
 
 void NgraphEngine::Run(const framework::Scope& scope,
                        const platform::Place& place) const {
+  VLOG(3) << "NgraphEngine Run ...";
   std::shared_ptr<ngraph::runtime::Executable> ng_handle;
   const std::set<std::string>* p_persistables;
   const std::vector<size_t>* p_var_in_updates;
