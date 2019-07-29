@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);
+DECLARE_bool(use_ngraph);
 
 namespace paddle {
 namespace framework {
@@ -52,6 +53,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
+
+    AppendPassToUseNgraph("ngraph_subgraph_pass");
 
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
@@ -214,6 +217,17 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #endif
   }
 
+  void AppendPassToUseNgraph(const std::string &pass_name) {
+#ifdef PADDLE_WITH_NGRAPH
+    if (FLAGS_use_ngraph) {
+      AppendPass(pass_name);
+    }
+#else
+    PADDLE_ENFORCE(!FLAGS_use_ngraph,
+                   "Please compile with MKLDNN first to use NGRAPH");
+#endif
+  }
+
  private:
   BuildStrategy strategy_;
 };
@@ -353,4 +367,7 @@ USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
+#endif
+#ifdef PADDLE_WITH_NGRAPH
+USE_PASS(ngraph_subgraph_pass);
 #endif
