@@ -34,7 +34,7 @@ class TestPassBuilder(unittest.TestCase):
             loss = simple_fc_net()
             test_program = main.clone(for_test=True)
 
-            opt = fluid.optimizer.SGD(learning_rate=0.001)
+            opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
 
             batch_size = 32
