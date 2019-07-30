@@ -230,16 +230,6 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
   auto interval = ctx.Attr<std::vector<int>>("interval");
   std::string serialized_graph = ctx.Attr<std::string>("graph");
 
-  auto input_vars = ctx.Inputs("Xs");
-  if (!input_vars.empty()) {
-    feed_vars = input_vars;
-    var_in_ = input_vars;
-  }
-  auto output_vars = ctx.Outputs("Ys");
-  if (!output_vars.empty()) {
-    var_out_ = output_vars;
-  }
-
   framework::proto::BlockDesc block_proto;
   if (!serialized_graph.empty()) block_proto.ParseFromString(serialized_graph);
   framework::BlockDesc block_desc(nullptr, &block_proto);
@@ -326,11 +316,8 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
     op_state_ = OpState::UNKNOWN;
   }
 
-  var_in_.clear();
-  var_out_.clear();
-  if (var_in_.empty() && var_out_.empty()) {
-    BuildNgIO(ops_desc, interval);
-  }
+  BuildNgIO(ops_desc, interval);
+
   for (size_t i = 0; i < var_in_.size(); ++i) {
     auto var_name = var_in_[i];
     if (persistables_.find(var_name) == persistables_.end()) {
