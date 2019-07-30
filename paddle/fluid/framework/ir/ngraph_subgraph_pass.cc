@@ -67,7 +67,7 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
     }
     std::cout << std::endl;
 
-    if (op_type == "mul" || op_type == "mul_grad")
+    if (op_type == "mul")
       return true;
     else
       return false;
