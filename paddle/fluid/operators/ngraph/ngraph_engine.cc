@@ -459,11 +459,13 @@ std::shared_ptr<ngraph::Function> NgraphEngine::BuildNgFunction(
 
   for (auto& vo : var_out_) {
     PADDLE_ENFORCE(var_node_map_->count(vo),
-                   "BuildNgFunction : Cannot find vo %s in var_node_map_", vo);
+                   "Cannot find vo %s in var_node_map_", vo);
     func_outputs.emplace_back(var_node_map_->at(vo));
   }
 
   for (auto& vi : var_in_) {
+    PADDLE_ENFORCE(var_node_map_->count(vi),
+                   "Cannot find vi %s in var_node_map_", vi);
     std::shared_ptr<ngraph::op::Parameter> prm =
         std::dynamic_pointer_cast<ngraph::op::Parameter>(
             var_in_node_map_->at(vi));

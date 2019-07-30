@@ -66,13 +66,14 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
       std::cout << output->Name() << "\t";
     }
     std::cout << std::endl;
-
-    std::unordered_set<std::string> supported_ops = {"mean", "fill_constant"};
+    /*
+    std::unordered_set<std::string> supported_ops = {"mean", "fill_constant",
+    "mean_grad"};
     if (supported_ops.count(op_type))
       return true;
     else
       return false;
-
+    */
     return !paddle::operators::NgraphBridge::isRegister(op_type);
   };
 

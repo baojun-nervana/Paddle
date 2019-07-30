@@ -27,7 +27,7 @@ import math
 
 class TestPassBuilder(unittest.TestCase):
     def check_network_convergence(self, use_cuda, build_strategy=None):
-        os.environ['CPU_NUM'] = str(4)
+        os.environ['CPU_NUM'] = str(1)
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
