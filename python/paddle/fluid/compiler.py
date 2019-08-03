@@ -264,6 +264,8 @@ class CompiledProgram(object):
                 self._exec_strategy.num_threads = len(self._places) * 4
             else:
                 self._exec_strategy.num_threads = len(self._places) * 2
+                if os.getenv('FLAGS_use_ngraph'):
+                    self._exec_strategy.num_threads /= 2
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
