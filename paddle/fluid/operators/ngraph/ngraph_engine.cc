@@ -75,7 +75,6 @@ std::vector<std::string> NgraphEngine::feed_vars = {};
 std::vector<std::string> NgraphEngine::fetch_vars = {};
 framework::Variable* NgraphEngine::pre_var_ptr = nullptr;
 const framework::BlockDesc* NgraphEngine::p_bdesc = nullptr;
-bool NgraphEngine::is_training = false;
 
 std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
@@ -277,7 +276,6 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
   for (auto op_desc : p_bdesc->AllOps()) {
     ops_desc.emplace_back(op_desc);
     if (op_desc->Type().find("_grad") != std::string::npos) {
-      is_training = true;
       this->is_test_ = false;
     }
   }
@@ -587,7 +585,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
       }
       bool is_persistable =
           (p_persistables->find(vi) != p_persistables->end()) ? true : false;
-      if (!is_training && is_test && is_persistable) {
+      if (false && is_test && is_persistable) {
         ti->set_stale(false);
       }
       (*p_t_in).emplace_back(ti);

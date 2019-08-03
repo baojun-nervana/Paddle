@@ -127,7 +127,6 @@ class NgraphEngine {
 
   void Run(const framework::Scope& scope, const platform::Place& place) const;
 
-  static bool is_training;
   static const framework::BlockDesc* p_bdesc;
   static std::vector<std::string> feed_vars, fetch_vars;
 
