@@ -348,13 +348,14 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
                         op->Type());
       for (auto& var_name : var_name_item.second) {
         if (this->is_test_) {
-          if (post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
+          if (true || post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
               find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
                   fetch_vars.end()) {
             this->var_out_.emplace_back(var_name);
           }
         } else {
-          if (find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
+          if (true ||
+              find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
                   fetch_vars.end() ||
               post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
               persistables_.find(var_name) != persistables_.end()) {
