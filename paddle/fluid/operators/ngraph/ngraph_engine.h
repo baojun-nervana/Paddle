@@ -127,7 +127,6 @@ class NgraphEngine {
 
   void Run(const framework::Scope& scope, const platform::Place& place) const;
 
-  static const framework::BlockDesc* p_bdesc;
   static std::vector<std::string> feed_vars;
 
   static void FuseNgraphOps(

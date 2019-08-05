@@ -73,7 +73,6 @@ static std::map<ngraph::element::Type, framework::proto::VarType::Type>
 
 std::vector<std::string> NgraphEngine::feed_vars = {};
 framework::Variable* NgraphEngine::pre_var_ptr = nullptr;
-const framework::BlockDesc* NgraphEngine::p_bdesc = nullptr;
 
 std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
@@ -159,16 +158,22 @@ static void SubstituteNgraphOp(
               framework::OpRegistry::CreateOp(ng_op_desc));
 }
 
-std::string SerializedBlock(const std::vector<framework::OpDesc*>& op_descs) {
+std::string SerializedBlock(const framework::BlockDesc& bdesc) {
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
 
-  for (auto* op_desc : op_descs) {
+  for (auto& op_desc : bdesc.AllOps()) {
     auto* op = block_desc.AppendOp();
     *op->Proto() = *op_desc->Proto();
   }
+
+  auto* vars = block_desc.Proto()->mutable_vars();
+  for (auto& var_desc : bdesc.AllVars()) {
+    *vars->Add() = *var_desc->Proto();
+  }
+
   return block_desc.Proto()->SerializeAsString();
 }
 
@@ -205,11 +210,12 @@ std::string GenerateEngineKey(const std::vector<std::string>& engine_inputs,
 void NgraphEngine::FuseNgraphOps(
     const framework::BlockDesc& block_desc,
     std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {
-  NgraphEngine::p_bdesc = &block_desc;
   auto intervals = NgraphOpIntervals(ops);
-  std::string engine_key = GenerateEngineKey(block_desc);
+  std::string serialized_block = SerializedBlock(block_desc);
+  std::string engine_key =
+      std::to_string(std::hash<std::string>()(serialized_block));
   for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
-    SubstituteNgraphOp(ops, engine_key, "", *it);
+    SubstituteNgraphOp(ops, engine_key, serialized_block, *it);
   }
 }
 
@@ -233,11 +239,8 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
   framework::proto::BlockDesc block_proto;
   if (!serialized_graph.empty()) block_proto.ParseFromString(serialized_graph);
   framework::BlockDesc block_desc(nullptr, &block_proto);
-  if (!serialized_graph.empty()) {
-    NgraphEngine::p_bdesc = &block_desc;
-  }
 
-  for (auto& var : p_bdesc->AllVars()) {
+  for (auto& var : block_desc.AllVars()) {
     if (!(var->GetType() == framework::proto::VarType::SELECTED_ROWS ||
           var->GetType() == framework::proto::VarType::LOD_TENSOR ||
           var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY)) {
@@ -265,7 +268,7 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
   }
 
   std::vector<paddle::framework::OpDesc*> ops_desc;
-  for (auto op_desc : p_bdesc->AllOps()) {
+  for (auto op_desc : block_desc.AllOps()) {
     ops_desc.emplace_back(op_desc);
     if (op_desc->Type().find("_grad") != std::string::npos) {
       this->is_test_ = false;
