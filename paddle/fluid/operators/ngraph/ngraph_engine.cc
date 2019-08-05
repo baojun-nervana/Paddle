@@ -72,7 +72,6 @@ static std::map<ngraph::element::Type, framework::proto::VarType::Type>
         {ngraph::element::boolean, framework::proto::VarType::BOOL}};
 
 std::vector<std::string> NgraphEngine::feed_vars = {};
-framework::Variable* NgraphEngine::pre_var_ptr = nullptr;
 
 std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
     ngraph::runtime::Backend::create("CPU");
@@ -489,10 +488,6 @@ void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
     } else {
       auto var_name = engine_cache[func_cache_key_].persistables.begin();
       framework::Variable* var = scope_.FindVar(*var_name);
-      if (var != pre_var_ptr) {
-        ClearNgCache();
-      }
-      pre_var_ptr = var;
     }
   }
 

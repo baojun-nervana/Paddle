@@ -147,8 +147,6 @@ class NgraphEngine {
   using main_t_in_cache =
       ThCache<std::vector<std::shared_ptr<ngraph::runtime::Tensor>>>;
 
-  static framework::Variable* pre_var_ptr;
-
   const framework::Scope& scope_;
   const platform::Place& place_;
   std::vector<std::shared_ptr<framework::OperatorBase>> fused_ops_;
