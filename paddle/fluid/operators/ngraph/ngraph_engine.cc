@@ -72,7 +72,6 @@ static std::map<ngraph::element::Type, framework::proto::VarType::Type>
         {ngraph::element::boolean, framework::proto::VarType::BOOL}};
 
 std::vector<std::string> NgraphEngine::feed_vars = {};
-std::vector<std::string> NgraphEngine::fetch_vars = {};
 framework::Variable* NgraphEngine::pre_var_ptr = nullptr;
 const framework::BlockDesc* NgraphEngine::p_bdesc = nullptr;
 
@@ -82,7 +81,6 @@ std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
 static std::vector<std::vector<int>> NgraphOpIntervals(
     std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {
   NgraphEngine::feed_vars.clear();
-  NgraphEngine::fetch_vars.clear();
   std::vector<std::vector<int>> intervals;
 
   int size = ops->size();
@@ -117,11 +115,6 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
 
   int index = right;
   while (index < size && ops->at(index)->Type() == framework::kFetchOpType) {
-    for (auto& var_name_item : ops->at(index)->Inputs()) {
-      for (auto& var_name : var_name_item.second) {
-        NgraphEngine::fetch_vars.emplace_back(var_name);
-      }
-    }
     ++index;
   }
 
@@ -214,8 +207,7 @@ void NgraphEngine::FuseNgraphOps(
     std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {
   NgraphEngine::p_bdesc = &block_desc;
   auto intervals = NgraphOpIntervals(ops);
-  std::string engine_key =
-      GenerateEngineKey(feed_vars, fetch_vars, ops->size());
+  std::string engine_key = GenerateEngineKey(block_desc);
   for (auto it = intervals.rbegin(); it != intervals.rend(); ++it) {
     SubstituteNgraphOp(ops, engine_key, "", *it);
   }
@@ -286,8 +278,7 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
         framework::OpRegistry::CreateOp(*(ops_desc[idx])));
     ++idx;
   }
-  while (idx < static_cast<int>(ops_desc.size()) &&
-         ops_desc.at(idx)->Type() != framework::kFetchOpType) {
+  while (idx < static_cast<int>(ops_desc.size())) {
     auto op_desc = ops_desc.at(idx);
     for (auto& var_name_item : op_desc->Inputs()) {
       for (auto& var_name : var_name_item.second) {
@@ -311,6 +302,14 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
                              const std::vector<int>& interval) {
   std::unordered_set<std::string> inputs;
   std::unordered_set<std::string> outputs;
+
+  std::cout << "BuildNgIO ops_desc : \n";
+  for (int i = 0; i < ops_desc.size(); ++i) {
+    auto op = ops_desc[i];
+    std::cout << op->Type() << "\t";
+  }
+  std::cout << "\n";
+
   for (int i = interval[0]; i < interval[1]; ++i) {
     auto op = ops_desc[i];
     for (auto& var_name_item : op->Inputs()) {
@@ -346,16 +345,11 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
                         op->Type());
       for (auto& var_name : var_name_item.second) {
         if (this->is_test_) {
-          if (true || post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
-              find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
-                  fetch_vars.end()) {
+          if (true || post_op_inputs_.find(var_name) != post_op_inputs_.end()) {
             this->var_out_.emplace_back(var_name);
           }
         } else {
-          if (true ||
-              find(fetch_vars.begin(), fetch_vars.end(), var_name) !=
-                  fetch_vars.end() ||
-              post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
+          if (true || post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
               persistables_.find(var_name) != persistables_.end()) {
             this->var_out_.emplace_back(var_name);
           }
