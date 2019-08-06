@@ -35,7 +35,8 @@ namespace operators {
 
 // cache engine repetitives
 struct EngineCache {
-  std::shared_ptr<ngraph::runtime::Executable> ngraph_handle;
+  std::shared_ptr<ngraph::runtime::Executable> ngraph_handle = nullptr;
+  std::shared_ptr<ngraph::runtime::Backend> ngraph_backend = nullptr;
   std::set<std::string> persistables;
   std::vector<std::string> var_in;
   std::vector<std::string> var_out;

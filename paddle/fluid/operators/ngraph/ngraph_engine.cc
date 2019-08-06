@@ -450,7 +450,8 @@ void NgraphEngine::ClearNgCache() {
   auto it = engine_cache.begin();
   while (it != engine_cache.end()) {
     auto ng_engine = it->second;
-    backend_->remove_compiled_function(ng_engine.ngraph_handle);
+    ng_engine.ngraph_backend->remove_compiled_function(ng_engine.ngraph_handle);
+    ng_engine.ngraph_backend.reset();
     ++it;
   }
   engine_cache.clear();
@@ -470,7 +471,7 @@ void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
   std::string engine_key = ctx.Attr<std::string>("engine_key");
 
   // set to flase, to debug cache or recompile everytime.
-  bool use_cache = false;
+  bool use_cache = true;
   if (!use_cache) ClearNgCache();
 
   this->func_cache_key_ = "";
@@ -504,6 +505,7 @@ void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
     for (auto& r : func->get_results()) {
       r->set_needs_default_layout(true);
     }
+    engine_cache[func_cache_key_].ngraph_backend = backend_;
     engine_cache[func_cache_key_].ngraph_handle = backend_->compile(func);
     engine_cache[func_cache_key_].persistables = this->persistables_;
     engine_cache[func_cache_key_].var_in_updates = this->var_in_updates_;
@@ -517,6 +519,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
                        const platform::Place& place) const {
   VLOG(3) << "NgraphEngine Run ...";
   std::shared_ptr<ngraph::runtime::Executable> ng_handle;
+  std::shared_ptr<ngraph::runtime::Backend> ng_backend;
   const std::set<std::string>* p_persistables;
   const std::vector<size_t>* p_var_in_updates;
   const std::vector<std::string>* p_var_in;
@@ -529,6 +532,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
   PADDLE_ENFORCE(engine_cache.find(func_cache_key_) != engine_cache.end(),
                  "Cannot find cached data to run ngraph function");
   ng_handle = engine_cache[func_cache_key_].ngraph_handle;
+  ng_backend = engine_cache[func_cache_key_].ngraph_backend;
   p_persistables = &(engine_cache[func_cache_key_].persistables);
   p_var_in_updates = &(engine_cache[func_cache_key_].var_in_updates);
   p_var_in = &(engine_cache[func_cache_key_].var_in);
@@ -540,7 +544,8 @@ void NgraphEngine::Run(const framework::Scope& scope,
 
   auto m_parameters = ng_handle->get_parameters();
   auto m_results = ng_handle->get_results();
-  if (is_test && t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
+  if (false && is_test &&
+      t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
     p_t_in = &(t_in_cache_[func_cache_key_]);
     for (size_t i = 0; i < p_var_in_updates->size(); ++i) {
       int index = p_var_in_updates->at(i);
@@ -552,14 +557,14 @@ void NgraphEngine::Run(const framework::Scope& scope,
       if (var && var->IsType<framework::LoDTensor>()) {
         auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
         void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
-        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+        ti = ng_backend->create_tensor(ng_type, sp, pd_arr);
         (*p_t_in)[index] = ti;
       } else {
         PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
       }
     }
   } else {
-    if (is_test) {
+    if (false && is_test) {
       p_t_in = &(t_in_cache_[func_cache_key_]);
     } else {
       p_t_in = &t_in;
@@ -576,7 +581,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
         void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
         PADDLE_ENFORCE(sp == Ddim2Shape(tensor_pd->dims()),
                        "Ensure ngraph tensor layout align with paddle tensor");
-        ti = backend_->create_tensor(ng_type, sp, pd_arr);
+        ti = ng_backend->create_tensor(ng_type, sp, pd_arr);
       } else {
         PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
       }
@@ -605,7 +610,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
       auto ng_type = m_results[i]->get_element_type();
       void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
       std::shared_ptr<ngraph::runtime::Tensor> to =
-          backend_->create_tensor(ng_type, sp, pd_arr);
+          ng_backend->create_tensor(ng_type, sp, pd_arr);
       t_out.emplace_back(to);
     } else {
       PADDLE_THROW("Cannot find var or tensor with var name %s", vo);
