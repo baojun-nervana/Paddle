@@ -229,7 +229,7 @@ NgraphEngine::NgraphEngine(const framework::Scope& scope,
   var_node_map_ = std::make_shared<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>();
 
-  std::lock_guard<std::mutex> lock(ng_mutex_);
+  // std::lock_guard<std::mutex> lock(ng_mutex_);
 
   if (!wp_backend_.lock()) {
     try {
