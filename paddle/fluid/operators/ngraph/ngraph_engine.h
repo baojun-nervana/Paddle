@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <list>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -156,8 +157,10 @@ class NgraphEngine {
   bool is_test_{true};
   std::string func_cache_key_;
 
+  static std::weak_ptr<ngraph::runtime::Backend> wp_backend_;
+  static std::mutex ng_mutex_;
   // ngraph backend eg. CPU
-  static std::shared_ptr<ngraph::runtime::Backend> backend_;
+  std::shared_ptr<ngraph::runtime::Backend> backend_;
   // var_name of inputs
   std::vector<std::string> var_in_;
   // var_name of outputs from  fetch in order

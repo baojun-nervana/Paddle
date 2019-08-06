@@ -73,8 +73,9 @@ static std::map<ngraph::element::Type, framework::proto::VarType::Type>
 
 std::vector<std::string> NgraphEngine::feed_vars = {};
 
-std::shared_ptr<ngraph::runtime::Backend> NgraphEngine::backend_ =
-    ngraph::runtime::Backend::create("CPU");
+std::weak_ptr<ngraph::runtime::Backend> NgraphEngine::wp_backend_;
+
+std::mutex NgraphEngine::ng_mutex_;
 
 static std::vector<std::vector<int>> NgraphOpIntervals(
     std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {
@@ -228,6 +229,20 @@ NgraphEngine::NgraphEngine(const framework::Scope& scope,
   var_node_map_ = std::make_shared<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>();
 
+  std::lock_guard<std::mutex> lock(ng_mutex_);
+
+  if (!wp_backend_.lock()) {
+    try {
+      VLOG(3) << "ngraph creating CPU  backend.";
+      backend_ = ngraph::runtime::Backend::create("CPU");
+    } catch (...) {
+      PADDLE_THROW("Unsupported nGraph backend");
+    }
+    wp_backend_ = backend_;
+  } else {
+    backend_ = wp_backend_.lock();
+  }
+
   GetNgFunction(ctx);
 }
 
@@ -304,13 +319,6 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
                              const std::vector<int>& interval) {
   std::unordered_set<std::string> inputs;
   std::unordered_set<std::string> outputs;
-
-  std::cout << "BuildNgIO ops_desc : \n";
-  for (int i = 0; i < ops_desc.size(); ++i) {
-    auto op = ops_desc[i];
-    std::cout << op->Type() << "\t";
-  }
-  std::cout << "\n";
 
   for (int i = interval[0]; i < interval[1]; ++i) {
     auto op = ops_desc[i];
@@ -462,7 +470,7 @@ void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
   std::string engine_key = ctx.Attr<std::string>("engine_key");
 
   // set to flase, to debug cache or recompile everytime.
-  bool use_cache = true;
+  bool use_cache = false;
   if (!use_cache) ClearNgCache();
 
   this->func_cache_key_ = "";
@@ -485,9 +493,6 @@ void NgraphEngine::GetNgFunction(const framework::ExecutionContext& ctx) {
   if (engine_cache.find(func_cache_key_) != engine_cache.end()) {
     if (engine_cache[func_cache_key_].persistables.size() == 0) {
       ClearNgCache();
-    } else {
-      auto var_name = engine_cache[func_cache_key_].persistables.begin();
-      framework::Variable* var = scope_.FindVar(*var_name);
     }
   }
 
