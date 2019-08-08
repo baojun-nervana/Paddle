@@ -145,7 +145,11 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
   std::set<std::string> output_names;
 
   for (auto *x : node->outputs) {
-    output_names.insert(x->Name());
+    if (x->Name().find(framework::ir::Node::kControlDepVarName) ==
+        std::string::npos) {
+      std::cout << "output_names = " << x->Name() << std::endl;
+      output_names.insert(x->Name());
+    }
   }
   op_desc->SetOutput(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));

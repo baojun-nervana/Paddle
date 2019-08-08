@@ -72,6 +72,13 @@ void FilterRedundantOutputOfSubGraph(Graph *graph) {
     }
     op_nodes.push_back(&node);
   }
+  /*
+  for (auto node : framework::ir::TopologySortOperations(*graph)) {
+    if (node->IsVar() || Agent(node).deleted()) {
+      continue;
+    }
+    op_nodes.push_back(node);
+  } */
   size_t op_num = op_nodes.size();
   for (size_t i = 0; i < op_num; i++) {
     if (op_nodes[i]->IsOp()) continue;
@@ -394,8 +401,24 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
                                         std::vector<Node *> *outputs) {
   std::unordered_set<Node *> subgraph_set(subgraph.begin(), subgraph.end());
   std::unordered_set<Node *> valid_output;
-
+  return;
+  bool is_training = false;
+  for (auto *node : graph->Nodes()) {
+    if (node->IsOp() && node->Name().find("_grad") != std::string::npos) {
+      is_training = true;
+      break;
+    }
+  }
+  if (is_training) return;
   for (auto *output : *outputs) {
+    std::cout << "output = " << output->Name() << ":  ";
+    if (is_training &&
+        output->Name().find(framework::ir::Node::kControlDepVarName) ==
+            std::string::npos) {
+      // std::cout << "traing output " << output->Name() << std::endl;
+      valid_output.insert(output);
+    }
+
     int num_used = 0;
     for (auto *node : output->outputs) {
       if (!subgraph_set.count(node)) ++num_used;
@@ -438,8 +461,7 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
               << block_node->outputs.size() << "\n";
     std::cout << block_node->outputs.back()->Name() << "\n";
 
-    // RemoveIntermediateOutputInSubgraph(subgraph, graph_,
-    // &block_node->outputs);
+    RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
 
     for (auto *node : subgraph) {
       // TODO(Superjomn) need a unified mechanism to treat deleted node in each

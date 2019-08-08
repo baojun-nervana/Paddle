@@ -305,7 +305,20 @@ void NgraphEngine::Prepare(const framework::ExecutionContext& ctx) {
     ++idx;
   }
 
-  BuildNgIO(ops_desc, interval);
+  auto input_vars = ctx.Inputs("Xs");
+  if (!input_vars.empty()) {
+    feed_vars = input_vars;
+    var_in_ = input_vars;
+  }
+
+  auto output_vars = ctx.Outputs("Ys");
+  if (!output_vars.empty()) {
+    var_out_ = output_vars;
+  }
+
+  if (var_in_.empty() && var_out_.empty()) {
+    BuildNgIO(ops_desc, interval);
+  }
 
   for (size_t i = 0; i < var_in_.size(); ++i) {
     auto var_name = var_in_[i];
@@ -355,11 +368,11 @@ void NgraphEngine::BuildNgIO(const std::vector<framework::OpDesc*>& ops_desc,
                         op->Type());
       for (auto& var_name : var_name_item.second) {
         if (this->is_test_) {
-          if (true || post_op_inputs_.find(var_name) != post_op_inputs_.end()) {
+          if (post_op_inputs_.find(var_name) != post_op_inputs_.end()) {
             this->var_out_.emplace_back(var_name);
           }
         } else {
-          if (true || post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
+          if (post_op_inputs_.find(var_name) != post_op_inputs_.end() ||
               persistables_.find(var_name) != persistables_.end()) {
             this->var_out_.emplace_back(var_name);
           }
