@@ -47,7 +47,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   return engine_key;
 }
 
-void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
+void NgraphSubgraphPass::ApplyImpl(Graph *graph) const {
   PADDLE_ENFORCE(graph);
   FusePassBase::Init("ngraph_subgraph_pass", graph);
 
@@ -56,24 +56,6 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
   auto teller = [](const Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
     auto op_type = node->Op()->Type();
-    std::cout << op_type << "\t" << node->id() << "\t";
-    for (auto output : node->outputs) {
-      std::cout << output->Name() << "\t";
-    }
-    std::cout << std::endl;
-
-    for (auto output : node->inputs) {
-      std::cout << output->Name() << "\t";
-    }
-    std::cout << std::endl;
-    /*
-    std::unordered_set<std::string> supported_ops = {"mean", "fill_constant",
-    "mean_grad"};
-    if (supported_ops.count(op_type))
-      return true;
-    else
-      return false;
-    */
     return !paddle::operators::NgraphBridge::isRegister(op_type);
   };
 
@@ -91,12 +73,6 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
           ANAT::Agent(node).subgraph()->begin(),
           ANAT::Agent(node).subgraph()->end());
 
-      std::cout << "\n\nnode in nodes2remove\n";
-      std::cout << "nodes2remove size = " << nodes2remove.size() << std::endl;
-      for (auto *node : nodes2remove) {
-        std::cout << node->Op()->Type() << std::endl;
-      }
-
       GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
@@ -112,12 +88,21 @@ void NgraphSubgraphPass::ApplyImpl(ir::Graph *graph) const {
   // std::vector<ir::Node *> nodes = ir::TopologySortOperations(*graph);
 }
 
+void UpdateNgOutput(framework::ir::Node *node, Graph *graph,
+                    std::set<std::string> *output_names) {
+  for (auto *x : node->outputs) {
+    if (x->Name().find(framework::ir::Node::kControlDepVarName) ==
+        std::string::npos) {
+      (*output_names).insert(x->Name());
+    }
+  }
+}
+
 void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
                                               Graph *graph) const {
   auto *op_desc = node->Op();
   auto &subgraph = *ANAT::Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
-  // node->SetId(subgraph.back()->id());
 
   framework::ProgramDesc *program_desc = new framework::ProgramDesc();
   const framework::BlockDesc &main_block =
@@ -143,14 +128,7 @@ void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
   std::set<std::string> output_names;
-
-  for (auto *x : node->outputs) {
-    if (x->Name().find(framework::ir::Node::kControlDepVarName) ==
-        std::string::npos) {
-      std::cout << "output_names = " << x->Name() << std::endl;
-      output_names.insert(x->Name());
-    }
-  }
+  UpdateNgOutput(node, graph, &output_names);
   op_desc->SetOutput(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
   auto *vars = block_desc.Proto()->mutable_vars();

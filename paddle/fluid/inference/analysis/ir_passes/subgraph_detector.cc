@@ -29,7 +29,6 @@ using framework::ir::Node;
 
 std::pair<std::vector<Node *>, std::vector<Node *>>
 ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
-  std::cout << "subgraph_detector subgraph size : " << graph.size() << "\n";
   std::unordered_set<Node *> nodes(graph.begin(), graph.end());
   std::unordered_set<Node *> inputs;
   std::unordered_set<Node *> outputs;
@@ -55,10 +54,6 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
       }
     }
   }
-  std::cout << "subgraph_detector subgraph inputs size : " << inputs.size()
-            << "\n";
-  std::cout << "subgraph_detector subgraph outputs size : " << outputs.size()
-            << "\n";
   return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
                         std::vector<Node *>(outputs.begin(), outputs.end()));
 }
@@ -72,13 +67,7 @@ void FilterRedundantOutputOfSubGraph(Graph *graph) {
     }
     op_nodes.push_back(&node);
   }
-  /*
-  for (auto node : framework::ir::TopologySortOperations(*graph)) {
-    if (node->IsVar() || Agent(node).deleted()) {
-      continue;
-    }
-    op_nodes.push_back(node);
-  } */
+
   size_t op_num = op_nodes.size();
   for (size_t i = 0; i < op_num; i++) {
     if (op_nodes[i]->IsOp()) continue;
@@ -401,30 +390,24 @@ void RemoveIntermediateOutputInSubgraph(const std::vector<Node *> &subgraph,
                                         std::vector<Node *> *outputs) {
   std::unordered_set<Node *> subgraph_set(subgraph.begin(), subgraph.end());
   std::unordered_set<Node *> valid_output;
-  return;
-  bool is_training = false;
-  for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && node->Name().find("_grad") != std::string::npos) {
-      is_training = true;
-      break;
-    }
-  }
-  if (is_training) return;
-  for (auto *output : *outputs) {
-    std::cout << "output = " << output->Name() << ":  ";
-    if (is_training &&
-        output->Name().find(framework::ir::Node::kControlDepVarName) ==
-            std::string::npos) {
-      // std::cout << "traing output " << output->Name() << std::endl;
-      valid_output.insert(output);
-    }
 
+  for (auto *output : *outputs) {
     int num_used = 0;
     for (auto *node : output->outputs) {
       if (!subgraph_set.count(node)) ++num_used;
       if (num_used > 0) valid_output.insert(output);
     }
   }
+
+  // bypass this output removal if it is not capi case
+  bool is_test = true;
+  for (auto *node : graph->Nodes()) {
+    if (node->IsOp() && node->Name().find("_grad") != std::string::npos) {
+      is_test = false;
+      break;
+    }
+  }
+  if (!is_test || valid_output.size() == 0) return;
 
   outputs->assign(valid_output.begin(), valid_output.end());
 }
@@ -455,12 +438,6 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     block_node->inputs = std::move(io.first);
     block_node->outputs = std::move(io.second);
 
-    std::cout << "subgraph_detector subgraph block inputs size : "
-              << block_node->inputs.size() << "\n";
-    std::cout << "subgraph_detector subgraph block outputs size : "
-              << block_node->outputs.size() << "\n";
-    std::cout << block_node->outputs.back()->Name() << "\n";
-
     RemoveIntermediateOutputInSubgraph(subgraph, graph_, &block_node->outputs);
 
     for (auto *node : subgraph) {
@@ -487,10 +464,6 @@ void SubGraphFuser::ReplaceNodesWithSubGraphs() {
     for (auto *&o : block_node->outputs) {
       inlink_or_outlink_cleaner(o->inputs);
     }
-    std::cout << "subgraph_detector subgraph block inputs size : "
-              << block_node->inputs.size() << "\n";
-    std::cout << "subgraph_detector subgraph block outputs size : "
-              << block_node->outputs.size() << "\n";
   }
   // DetachDeletedNodes(graph_);
   FilterRedundantOutputOfSubGraph(graph_);
