@@ -44,7 +44,6 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
     if (dep == 0) {
-      std::cout << "bootstrap op : " << op->Name() << std::endl;
       bootstrap_ops_.emplace_back(op);
     }
   }
@@ -131,19 +130,10 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
   for (auto &fetch_var_name : fetch_tensor_set) {
     for (auto &var_map : graph_->Get<GraphVars>(kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
-      std::cout << "InsertFetchOps : fetch_var_name : " << fetch_var_name
-                << std::endl;
       if (it != var_map.end()) {
-        std::cout << "InsertFetchOps : fetch_var_name (found): "
-                  << fetch_var_name << std::endl;
         (*fetched_vars)[fetch_var_name].push_back(*it->second.rbegin());
       }
     }
-  }
-
-  std::cout << "fetch_tensors : \n";
-  for (size_t i = 0; i < fetch_tensors.size(); ++i) {
-    std::cout << fetch_tensors.at(i) << std::endl;
   }
 
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
@@ -181,7 +171,6 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
 bool FastThreadedSSAGraphExecutor::RunOp(
     OpHandleBase *op, const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
     size_t *complete) {
-  std::cout << "   RunOp op type : " << op->Name() << std::endl;
   RunOpSync(op);
   if (LIKELY(!exception_.IsCaught())) {
     if (LIKELY(!strategy_.dry_run_)) {

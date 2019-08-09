@@ -171,12 +171,6 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   CheckGraph(*graph);
   std::vector<ir::Node *> sorted_ops = SortOperations(*graph);
 
-  std::cout << "sorted_ops : \n";
-  for (auto node : sorted_ops) {
-    std::cout << node->Name() << "\t";
-  }
-  std::cout << "end sorted_ops \n";
-
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
