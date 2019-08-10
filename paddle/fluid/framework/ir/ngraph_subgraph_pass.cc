@@ -88,66 +88,91 @@ void NgraphSubgraphPass::ApplyImpl(Graph *graph) const {
   // std::vector<ir::Node *> nodes = ir::TopologySortOperations(*graph);
 }
 
-void UpdateNgOutput(framework::ir::Node *node, Graph *graph,
-                    std::set<std::string> *output_names) {
-  for (auto *x : node->outputs) {
-    if (x->Name().find(framework::ir::Node::kControlDepVarName) ==
-        std::string::npos) {
-      (*output_names).insert(x->Name());
+bool IsValid(std::string name) {
+  return name.find(Node::kControlDepVarName) == std::string::npos;
+}
+
+void UpdateNgraphIO(Node *node, Graph *graph,
+                    std::vector<std::string> *input_names,
+                    std::vector<std::string> *output_names) {
+  bool is_test = true, has_fetch = false;
+  for (Node *node : graph->Nodes()) {
+    if (node->IsOp() && node->Name().find("_grad") != std::string::npos) {
+      is_test = false;
+    }
+    if (node->IsVar() && node->Var()) {
+      for (auto out : node->outputs) {
+        if (out->Name() == "fetch") has_fetch = true;
+      }
+    }
+  }
+  if (is_test && has_fetch) {
+    for (auto *x : node->inputs) {
+      (*input_names).emplace_back(x->Name());
+    }
+    for (auto *x : node->outputs) {
+      (*output_names).emplace_back(x->Name());
+    }
+    return;
+  }
+
+  auto &subgraph = *ANAT::Agent(node).subgraph();
+  std::unordered_set<std::string> inputs;
+  std::unordered_set<std::string> outputs;
+  for (auto *node : subgraph) {
+    for (auto in : node->inputs) {
+      auto name = in->Name();
+      if (!IsValid(name)) continue;
+      if (!outputs.count(name) && !inputs.count(name)) {
+        (*input_names).emplace_back(name);
+        inputs.insert(name);
+      }
+    }
+    for (auto out : node->outputs) {
+      auto name = out->Name();
+      if (!IsValid(name)) continue;
+      outputs.insert(name);
+      (*output_names).emplace_back(name);
     }
   }
 }
 
-void NgraphSubgraphPass::CreateNgraphEngineOp(framework::ir::Node *node,
-                                              Graph *graph) const {
-  auto *op_desc = node->Op();
+void NgraphSubgraphPass::CreateNgraphEngineOp(Node *node, Graph *graph) const {
   auto &subgraph = *ANAT::Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
-
-  framework::ProgramDesc *program_desc = new framework::ProgramDesc();
-  const framework::BlockDesc &main_block =
-      program_desc->Block(framework::kRootBlockIndex);
-  framework::BlockDesc *new_block = program_desc->AppendBlock(main_block);
 
   framework::proto::BlockDesc block_proto;
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
   for (auto *node : subgraph) {
-    auto *new_block_op = new_block->AppendOp();
     auto *op = block_desc.AppendOp();
-    *new_block_op->Proto() = *node->Op()->Proto();
     *op->Proto() = *node->Op()->Proto();
   }
-
-  std::set<std::string> input_names;
-  for (auto *x : node->inputs) {
-    input_names.insert(x->Name());
-  }
-  op_desc->SetInput(
-      "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
-
-  std::set<std::string> output_names;
-  UpdateNgOutput(node, graph, &output_names);
-  op_desc->SetOutput(
-      "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
   auto *vars = block_desc.Proto()->mutable_vars();
-  for (framework::ir::Node *node : graph->Nodes()) {
+  for (Node *node : graph->Nodes()) {
     if (node->IsVar() && node->Var()) {
       *vars->Add() = *node->Var()->Proto();
     }
   }
-
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty(),
                  "the block has no var-desc");
 
-  op_desc->SetType("ngraph_engine");
+  std::vector<std::string> input_names;
+  std::vector<std::string> output_names;
+  UpdateNgraphIO(node, graph, &input_names, &output_names);
+  auto *op_desc = node->Op();
+  op_desc->SetInput(
+      "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
+  op_desc->SetOutput(
+      "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
 
   int sgs = subgraph.size();
   std::string subgraph_str = block_desc.Proto()->SerializeAsString();
   std::string engine_key =
       std::to_string(std::hash<std::string>()(subgraph_str));
   std::vector<int> interval{0, sgs};
+  op_desc->SetType("ngraph_engine");
   op_desc->SetAttr("interval", interval);
   op_desc->SetAttr("graph", subgraph_str);
   op_desc->SetAttr("engine_key", engine_key);
