@@ -229,7 +229,7 @@ NgraphEngine::NgraphEngine(const framework::Scope& scope,
   var_node_map_ = std::make_shared<
       std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>();
 
-  // std::lock_guard<std::mutex> lock(ng_mutex_);
+  std::lock_guard<std::mutex> lock(ng_mutex_);
 
   if (!wp_backend_.lock()) {
     try {
@@ -537,7 +537,6 @@ void NgraphEngine::Run(const framework::Scope& scope,
   const std::vector<size_t>* p_var_in_updates;
   const std::vector<std::string>* p_var_in;
   const std::vector<std::string>* p_var_out;
-  bool is_test;
 
   auto& engine_cache = main_engine_cache::fetch();
   auto& t_in_cache_ = main_t_in_cache::fetch();
@@ -550,15 +549,13 @@ void NgraphEngine::Run(const framework::Scope& scope,
   p_var_in_updates = &(engine_cache[func_cache_key_].var_in_updates);
   p_var_in = &(engine_cache[func_cache_key_].var_in);
   p_var_out = &(engine_cache[func_cache_key_].var_out);
-  is_test = engine_cache[func_cache_key_].is_test;
 
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>>* p_t_in;
   std::vector<std::shared_ptr<ngraph::runtime::Tensor>> t_in = {};
 
   auto m_parameters = ng_handle->get_parameters();
   auto m_results = ng_handle->get_results();
-  if (false && is_test &&
-      t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
+  if (is_inference_ && t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
     p_t_in = &(t_in_cache_[func_cache_key_]);
     for (size_t i = 0; i < p_var_in_updates->size(); ++i) {
       int index = p_var_in_updates->at(i);
@@ -577,7 +574,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
       }
     }
   } else {
-    if (false && is_test) {
+    if (is_inference_) {
       p_t_in = &(t_in_cache_[func_cache_key_]);
     } else {
       p_t_in = &t_in;
@@ -600,7 +597,7 @@ void NgraphEngine::Run(const framework::Scope& scope,
       }
       bool is_persistable =
           (p_persistables->find(vi) != p_persistables->end()) ? true : false;
-      if (false && is_test && is_persistable) {
+      if (is_inference_ && is_persistable) {
         ti->set_stale(false);
       }
       (*p_t_in).emplace_back(ti);

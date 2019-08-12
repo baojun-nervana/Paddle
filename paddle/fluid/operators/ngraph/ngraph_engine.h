@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <list>
 #include <memory>
-#include <mutex>
+#include <mutex>  //NOLINT
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -155,10 +155,15 @@ class NgraphEngine {
   std::unordered_map<std::string, ngraph::element::Type> var_type_map_;
   std::set<std::string> persistables_;
   std::unordered_set<std::string> post_op_inputs_;
+  // it is test for a single run, it can be a validation during training
   bool is_test_{true};
+  // inference only. eg. CAPI inference
+  bool is_inference_{false};
   std::string func_cache_key_;
-
+  // use a weak pointer to keep backend_ alive
+  // to avoid it to be destropyed too earlier
   static std::weak_ptr<ngraph::runtime::Backend> wp_backend_;
+  // use mutex to keep it thread safe
   static std::mutex ng_mutex_;
   // ngraph backend eg. CPU
   std::shared_ptr<ngraph::runtime::Backend> backend_;
