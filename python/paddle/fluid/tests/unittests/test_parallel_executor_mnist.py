@@ -66,8 +66,7 @@ def fc_with_batchnorm(use_feed):
 class TestMNIST(TestParallelExecutorBase):
     @classmethod
     def setUpClass(cls):
-        # os.environ['CPU_NUM'] = str(4)
-        pass
+        os.environ['CPU_NUM'] = str(4)
 
     def _init_data(self):
         np.random.seed(5)
@@ -136,14 +135,12 @@ class TestMNIST(TestParallelExecutorBase):
 
         single_first_loss, single_last_loss = self.check_network_convergence(
             method=simple_fc_net,
-            seed=1,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
             use_parallel_executor=False)
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             method=simple_fc_net,
-            seed=1,
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,

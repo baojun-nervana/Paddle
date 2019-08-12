@@ -233,7 +233,6 @@ class ParallelExecutorPrivate {
 };
 
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
-  return graph;
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
   auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");

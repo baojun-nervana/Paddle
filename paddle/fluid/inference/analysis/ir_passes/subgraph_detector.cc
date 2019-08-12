@@ -67,7 +67,6 @@ void FilterRedundantOutputOfSubGraph(Graph *graph) {
     }
     op_nodes.push_back(&node);
   }
-
   size_t op_num = op_nodes.size();
   for (size_t i = 0; i < op_num; i++) {
     if (op_nodes[i]->IsOp()) continue;
